@@ -48,11 +48,18 @@ export class CapabilityRollbackService {
         reason: "Capability disabled; no previous known-good release is available."
       };
     }
-    if (!/^[a-f0-9]{64}$/i.test(previous.artifactSha256)) {
+    if (previous.capabilityId !== capabilityId) {
       return {
         rolledBack: false,
         capabilityId,
-        reason: "Capability disabled; previous release has no valid SHA-256 digest."
+        reason: "Capability disabled; previous release belongs to a different capability."
+      };
+    }
+    if (!previous.version.trim() || !/^[a-f0-9]{64}$/i.test(previous.artifactSha256)) {
+      return {
+        rolledBack: false,
+        capabilityId,
+        reason: "Capability disabled; previous release has an invalid version or SHA-256 digest."
       };
     }
     const { deploymentId } = await this.deployment.deploySignedArtifact(previous);
