@@ -5,7 +5,8 @@
 ## Controls added in this change
 
 - Authorization scopes are resolved from a server-side grant provider; request JSON cannot self-assign permissions.
-- Unknown, disabled, non-deployed, malformed-digest, or undeclared-risk capabilities fail closed.
+- Unknown, disabled, non-deployed, malformed-digest, mismatched-identity, or undeclared-risk capabilities fail closed.
+- Authorization checks a trusted emergency-stop callback before every new action; if it is active, missing, or unavailable, the action is denied. This is an admission gate, not a guarantee that an already-running physical action is interrupted.
 - Sensitive/high-impact actions require an approval validator that must bind approval to the authenticated actor, action, target, request, expiry and single use.
 - A one-time approval service stores only token hashes and supports an atomic consume contract. The included in-memory store is development/test only and is not production-safe across replicas or restarts.
 - Home Assistant exact origins (scheme, host and port) and entity IDs are allowlisted by trusted deployment configuration.
@@ -28,7 +29,7 @@
 7. Add SSRF protections at the network layer: egress allowlist, private-address rules, DNS rebinding defenses, no user-controlled connector URLs.
 8. Isolate generated-code builds in ephemeral workers with no production credentials, restricted egress, resource quotas and immutable base images.
 9. Require reviewed patches, dependency/SBOM scanning, secret scanning, artifact signing, staging smoke tests and rollback drills before deployment.
-10. Add global kill switch, per-capability suspension and device revocation.
+10. Wire the emergency-stop callback to a durable, authenticated, audited global kill-switch service; add per-capability suspension, in-flight cancellation where supported, and device credential revocation. The current policy only gates new actions and does not interrupt an action already in progress.
 11. Add backup/restore, incident response, vulnerability reporting, security review and privacy/data-residency review.
 12. Commit a lockfile and use npm ci before production; pin third-party actions to immutable commit SHAs.
 13. Execute tests in CI and retain run IDs, logs and artifact hashes before claiming acceptance.
