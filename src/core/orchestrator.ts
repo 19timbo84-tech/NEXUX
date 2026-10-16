@@ -92,8 +92,8 @@ export class ActionOrchestrator {
       });
       return {
         ...receipt,
-        observedState: verification.observedState,
-        evidenceRef: verification.evidenceRef,
+        ...(verification.observedState !== undefined ? { observedState: verification.observedState } : {}),
+        ...(verification.evidenceRef !== undefined ? { evidenceRef: verification.evidenceRef } : {}),
         evidenceState: "OBSERVED",
         message: "Action result independently verified."
       };
