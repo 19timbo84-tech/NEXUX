@@ -119,10 +119,11 @@ export function analyzeSemanticSignals(
       issues.push("OBSERVED_AT_INVALID");
     }
 
+    const hasExactKey = Boolean(normalizedSource && normalizedTitle && normalizedConcepts.length > 0);
     const exactKey = [normalizedSource, normalizedTitle, [...normalizedConcepts].sort().join("|")].join("::");
-    const duplicateOf = exactKey !== "::::" ? seenExact.get(exactKey) : undefined;
+    const duplicateOf = hasExactKey ? seenExact.get(exactKey) : undefined;
     if (duplicateOf) issues.push("EXACT_DUPLICATE_CANDIDATE");
-    else if (exactKey !== "::::") seenExact.set(exactKey, input.id);
+    else if (hasExactKey) seenExact.set(exactKey, input.id);
 
     for (const concept of normalizedConcepts) {
       const ids = conceptIds.get(concept) ?? new Set<string>();
@@ -132,7 +133,7 @@ export function analyzeSemanticSignals(
 
     const status: SignalStatus = duplicateOf
       ? "DUPLICATE_CANDIDATE"
-      : input.sourceUri && !validHttpUri(input.sourceUri)
+      : issues.length > 0
         ? "UNDER_REVIEW"
         : "SOURCE_UNVERIFIED";
 
