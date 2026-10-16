@@ -149,7 +149,7 @@ export class HomeAssistantAdapter implements CapabilityAdapter {
       verified,
       observedState: observed,
       evidenceRef: `ha-state:${request.target}:${Date.now()}`,
-      reason: verified ? undefined : reason
+      ...(verified ? {} : { reason })
     };
   }
 
