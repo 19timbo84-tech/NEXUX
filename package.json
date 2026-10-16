@@ -1,0 +1,19 @@
+{
+  "name": "ash-cloud-agent-foundation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A.S.H. CORE + NEXUS cloud agent foundation with explicit authorization and evidence gates",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  },
+  "engines": { "node": ">=22" }
+}
