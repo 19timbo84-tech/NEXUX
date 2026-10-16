@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   ActionRequest,
   ActionReceipt,
@@ -6,6 +7,15 @@ import type {
   AuthorizationPolicy
 } from "./contracts.js";
 import { CapabilityRegistry } from "./registry.js";
+
+function fingerprint(value: unknown): string {
+  try {
+    const serialized = JSON.stringify(value);
+    return createHash("sha256").update(serialized ?? "undefined").digest("hex");
+  } catch {
+    return "UNHASHABLE";
+  }
+}
 
 export class ActionOrchestrator {
   constructor(
@@ -53,11 +63,11 @@ export class ActionOrchestrator {
       await this.write(request, "EXECUTED", {
         operationId: receipt.operationId,
         accepted: receipt.accepted,
-        before
+        beforeStateSha256: fingerprint(before)
       });
 
       if (!receipt.accepted) {
-        await this.write(request, "FAILED", { reason: receipt.message });
+        await this.write(request, "FAILED", { reason: "Adapter rejected the action." });
         return { ...receipt, evidenceState: "UNKNOWN" };
       }
 
@@ -65,6 +75,7 @@ export class ActionOrchestrator {
       if (!verification.verified) {
         await this.write(request, "FAILED", {
           operationId: receipt.operationId,
+          observedStateSha256: fingerprint(verification.observedState),
           reason: verification.reason ?? "Post-action state not verified."
         });
         return {
@@ -76,7 +87,7 @@ export class ActionOrchestrator {
 
       await this.write(request, "VERIFIED", {
         operationId: receipt.operationId,
-        observedState: verification.observedState,
+        observedStateSha256: fingerprint(verification.observedState),
         evidenceRef: verification.evidenceRef
       });
       return {
@@ -87,8 +98,9 @@ export class ActionOrchestrator {
         message: "Action result independently verified."
       };
     } catch (error) {
+      // Do not persist raw exception messages; provider errors can contain sensitive details.
       await this.write(request, "FAILED", {
-        reason: error instanceof Error ? error.message : "Unknown execution error."
+        reason: error instanceof Error ? error.name : "Unknown execution error."
       });
       throw error;
     }
