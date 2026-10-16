@@ -46,7 +46,7 @@ describe("FailClosedPolicy", () => {
   it("fails closed when emergency-stop state is unavailable", async () => {
     await expect(policy({ isEmergencyStopActive: vi.fn().mockRejectedValue(new Error("store unavailable")) })
       .authorize(request, manifest)).resolves.toMatchObject({ allowed: false });
-    await expect(policy({ isEmergencyStopActive: undefined }).authorize(request, manifest))
+    await expect(policy({ isEmergencyStopActive: undefined } as never).authorize(request, manifest))
       .resolves.toMatchObject({ allowed: false });
   });
 
