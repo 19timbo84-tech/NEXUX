@@ -28,6 +28,7 @@ function policy(overrides: Partial<ConstructorParameters<typeof FailClosedPolicy
     enabledCapabilities: new Set(["demo-light"]),
     resolveGrantedScopes: vi.fn().mockResolvedValue(new Set(["light:control"])),
     validateApprovalToken: vi.fn().mockResolvedValue(true),
+    isEmergencyStopActive: vi.fn().mockResolvedValue(false),
     ...overrides
   });
 }
@@ -35,6 +36,23 @@ function policy(overrides: Partial<ConstructorParameters<typeof FailClosedPolicy
 describe("FailClosedPolicy", () => {
   it("allows an enabled, declared action with server-granted scope", async () => {
     await expect(policy().authorize(request, manifest)).resolves.toMatchObject({ allowed: true });
+  });
+
+  it("denies when the emergency stop is active", async () => {
+    await expect(policy({ isEmergencyStopActive: vi.fn().mockResolvedValue(true) }).authorize(request, manifest))
+      .resolves.toMatchObject({ allowed: false, reason: expect.stringContaining("Emergency stop") });
+  });
+
+  it("fails closed when emergency-stop state is unavailable", async () => {
+    await expect(policy({ isEmergencyStopActive: vi.fn().mockRejectedValue(new Error("store unavailable")) })
+      .authorize(request, manifest)).resolves.toMatchObject({ allowed: false });
+    await expect(policy({ isEmergencyStopActive: undefined }).authorize(request, manifest))
+      .resolves.toMatchObject({ allowed: false });
+  });
+
+  it("denies capability identity mismatch", async () => {
+    await expect(policy().authorize({ ...request, capabilityId: "other-capability" }, manifest))
+      .resolves.toMatchObject({ allowed: false });
   });
 
   it("denies unknown actions", async () => {
