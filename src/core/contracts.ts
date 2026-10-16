@@ -26,17 +26,19 @@ export interface CapabilityManifest {
   riskByAction: Readonly<Record<string, RiskLevel>>;
   requiredScopes: readonly string[];
   lifecycle: CapabilityLifecycle;
+  /** SHA-256 digest of the reviewed source artifact; placeholders are forbidden. */
   sourceHash: string;
 }
 
 export interface ActionRequest {
+  /** Must be populated by trusted authentication middleware, never copied from client JSON. */
   requestId: string;
   actorId: string;
   capabilityId: string;
   action: string;
   target: string;
   parameters: Readonly<Record<string, unknown>>;
-  scopes: readonly string[];
+  /** Opaque, short-lived, request-bound server-issued approval reference. */
   approvalToken?: string;
   dryRun?: boolean;
 }
