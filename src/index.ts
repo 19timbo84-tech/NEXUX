@@ -2,4 +2,7 @@ export * from "./core/contracts.js";
 export * from "./core/policy.js";
 export * from "./core/registry.js";
 export * from "./core/orchestrator.js";
+export * from "./core/approvals.js";
+export * from "./core/secrets.js";
+export * from "./core/rollback.js";
 export * from "./adapters/home-assistant.js";
