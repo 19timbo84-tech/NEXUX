@@ -9,8 +9,8 @@ import type {
 export interface HomeAssistantConfig {
   baseUrl: string;
   token: string;
-  /** Exact hostname allowlist; configure from trusted server-side deployment settings. */
-  allowedHosts: ReadonlySet<string>;
+  /** Exact origin allowlist (scheme, host and port); configure from trusted server-side deployment settings. */
+  allowedOrigins: ReadonlySet<string>;
   /** Exact entity IDs that this adapter is permitted to touch. */
   allowedTargets: ReadonlySet<string>;
   /** Exact domain/service allowlist; do not expose this setting to model-generated input. */
@@ -45,8 +45,8 @@ export class HomeAssistantAdapter implements CapabilityAdapter {
     if (this.baseUrl.username || this.baseUrl.password || this.baseUrl.search || this.baseUrl.hash) {
       throw new Error("Home Assistant base URL must not contain credentials, query, or fragment.");
     }
-    if (!config.allowedHosts.has(this.baseUrl.hostname.toLowerCase())) {
-      throw new Error("Home Assistant host is not in the server-side host allowlist.");
+    if (!config.allowedOrigins.has(this.baseUrl.origin)) {
+      throw new Error("Home Assistant origin is not in the server-side origin allowlist.");
     }
     if (!config.token.trim()) throw new Error("Home Assistant token is required.");
     if (!/^[a-f0-9]{64}$/i.test(config.sourceHash)) {
