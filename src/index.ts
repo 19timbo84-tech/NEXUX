@@ -5,4 +5,5 @@ export * from "./core/orchestrator.js";
 export * from "./core/approvals.js";
 export * from "./core/secrets.js";
 export * from "./core/rollback.js";
+export * from "./core/build-isolation.js";
 export * from "./adapters/home-assistant.js";
