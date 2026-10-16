@@ -4,7 +4,7 @@ import { HomeAssistantAdapter } from "../src/adapters/home-assistant.js";
 const config = (overrides: Record<string, unknown> = {}) => ({
   baseUrl: "https://ha.example.test",
   token: "server-only-test-token",
-  allowedHosts: new Set(["ha.example.test"]),
+  allowedOrigins: new Set(["https://ha.example.test"]),
   allowedTargets: new Set(["light.office", "media_player.office"]),
   allowedActions: new Set(["light.turn_on", "light.turn_off", "media_player.volume_set"]),
   sourceHash: "b".repeat(64),
@@ -17,7 +17,7 @@ const config = (overrides: Record<string, unknown> = {}) => ({
 describe("HomeAssistantAdapter security", () => {
   it("rejects hosts outside the configured allowlist", () => {
     expect(() => new HomeAssistantAdapter(config({ baseUrl: "https://attacker.example" }) as never)
-    ).toThrow(/host is not in/);
+    ).toThrow(/origin is not in/);
   });
 
   it("rejects HTTP outside loopback", () => {
