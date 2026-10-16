@@ -14,6 +14,8 @@ export interface PolicyConfig {
   resolveGrantedScopes: (authenticatedActorId: string) => Promise<ReadonlySet<string>>;
   /** Must validate actor, action, target, expiry, single-use and request binding. */
   validateApprovalToken: (token: string, request: ActionRequest) => Promise<boolean>;
+  /** Must read a trusted server-side kill switch; missing/unavailable means deny. */
+  isEmergencyStopActive?: () => Promise<boolean>;
 }
 
 const rank: Record<RiskLevel, number> = {
@@ -32,6 +34,16 @@ export class FailClosedPolicy implements AuthorizationPolicy {
   ): Promise<{ allowed: boolean; reason: string }> {
     if (!request.actorId.trim() || !request.requestId.trim()) {
       return { allowed: false, reason: "Missing authenticated actor or request identity." };
+    }
+    if (request.capabilityId !== manifest.id) {
+      return { allowed: false, reason: "Request capability does not match the registered manifest." };
+    }
+    try {
+      if (!this.config.isEmergencyStopActive || await this.config.isEmergencyStopActive()) {
+        return { allowed: false, reason: "Emergency stop is active or unavailable; execution is blocked." };
+      }
+    } catch {
+      return { allowed: false, reason: "Emergency-stop state could not be verified; refusing by default." };
     }
     if (!this.config.enabledCapabilities.has(manifest.id)) {
       return { allowed: false, reason: "Capability is not enabled by server policy." };
