@@ -8,7 +8,7 @@
 - Unknown, disabled, non-deployed, malformed-digest, or undeclared-risk capabilities fail closed.
 - Sensitive/high-impact actions require an approval validator that must bind approval to the authenticated actor, action, target, request, expiry and single use.
 - A one-time approval service stores only token hashes and supports an atomic consume contract. The included in-memory store is development/test only and is not production-safe across replicas or restarts.
-- Home Assistant hostnames and entity IDs are allowlisted by trusted deployment configuration.
+- Home Assistant exact origins (scheme, host and port) and entity IDs are allowlisted by trusted deployment configuration.
 - The adapter refuses non-HTTPS remote endpoints, URLs with embedded credentials/query/fragments, and redirects.
 - Home Assistant service actions and parameters are allowlisted; entity_id cannot be overwritten by arbitrary parameters.
 - Light and volume parameters have explicit numeric bounds; volume is independently verified against observed state.
