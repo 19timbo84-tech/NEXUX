@@ -10,6 +10,8 @@ export interface PolicyConfig {
   approvalRequiredAt: RiskLevel;
   /** Server-controlled allowlist; never derive this from the model or request. */
   enabledCapabilities: ReadonlySet<string>;
+  /** Bind the request to the authenticated principal from trusted server-side auth context. Never trust request.actorId alone. */
+  resolveAuthenticatedActorId: (request: ActionRequest) => Promise<string | null>;
   /** Resolve scopes from trusted server-side identity/authorization storage. */
   resolveGrantedScopes: (authenticatedActorId: string) => Promise<ReadonlySet<string>>;
   /** Must validate actor, action, target, expiry, single-use and request binding. */
@@ -35,6 +37,17 @@ export class FailClosedPolicy implements AuthorizationPolicy {
     if (!request.actorId.trim() || !request.requestId.trim()) {
       return { allowed: false, reason: "Missing authenticated actor or request identity." };
     }
+
+    let authenticatedActorId: string | null;
+    try {
+      authenticatedActorId = await this.config.resolveAuthenticatedActorId(request);
+    } catch {
+      return { allowed: false, reason: "Authenticated identity could not be verified; refusing by default." };
+    }
+    if (!authenticatedActorId || authenticatedActorId !== request.actorId) {
+      return { allowed: false, reason: "Request actor does not match the authenticated principal; refusing by default." };
+    }
+
     if (request.capabilityId !== manifest.id) {
       return { allowed: false, reason: "Request capability does not match the registered manifest." };
     }
@@ -68,7 +81,7 @@ export class FailClosedPolicy implements AuthorizationPolicy {
 
     let grantedScopes: ReadonlySet<string>;
     try {
-      grantedScopes = await this.config.resolveGrantedScopes(request.actorId);
+      grantedScopes = await this.config.resolveGrantedScopes(authenticatedActorId);
     } catch {
       return { allowed: false, reason: "Unable to resolve trusted permissions; refusing by default." };
     }
