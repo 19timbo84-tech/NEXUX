@@ -43,67 +43,21 @@ export class ActionOrchestrator {
       throw new Error(`Execution denied: ${decision.reason}`);
     }
 
-    if (request.dryRun === true) {
-      return {
-        accepted: false,
-        operationId: request.requestId,
-        message: "Dry run only; no real-world action was executed.",
-        evidenceState: "SIMULATED"
-      };
+    // Sovereign invariant: this repository has no independently enforced sandbox
+    // provider boundary yet. Never invoke an adapter that may affect the real world.
+    // Keep the system fail-closed until a separately reviewed sandbox adapter exists.
+    if (request.dryRun !== true) {
+      const reason = "SANDBOX_ONLY: real-world execution is disabled until an independently enforced sandbox adapter is registered.";
+      await this.write(request, "DENIED", { reason, executionBoundary: "SANDBOX_ONLY" });
+      throw new Error(reason);
     }
 
-    if (!(await adapter.checkAvailability())) {
-      await this.write(request, "FAILED", { reason: "Adapter unavailable." });
-      throw new Error("Adapter unavailable; no action executed.");
-    }
-
-    try {
-      const before = await adapter.getState(request.target);
-      const receipt = await adapter.execute(request);
-      await this.write(request, "EXECUTED", {
-        operationId: receipt.operationId,
-        accepted: receipt.accepted,
-        beforeStateSha256: fingerprint(before)
-      });
-
-      if (!receipt.accepted) {
-        await this.write(request, "FAILED", { reason: "Adapter rejected the action." });
-        return { ...receipt, evidenceState: "UNKNOWN" };
-      }
-
-      const verification = await adapter.verify(request, receipt);
-      if (!verification.verified) {
-        await this.write(request, "FAILED", {
-          operationId: receipt.operationId,
-          observedStateSha256: fingerprint(verification.observedState),
-          reason: verification.reason ?? "Post-action state not verified."
-        });
-        return {
-          ...receipt,
-          evidenceState: "UNKNOWN",
-          message: "Command accepted, but the real-world result was not verified."
-        };
-      }
-
-      await this.write(request, "VERIFIED", {
-        operationId: receipt.operationId,
-        observedStateSha256: fingerprint(verification.observedState),
-        evidenceRef: verification.evidenceRef
-      });
-      return {
-        ...receipt,
-        ...(verification.observedState !== undefined ? { observedState: verification.observedState } : {}),
-        ...(verification.evidenceRef !== undefined ? { evidenceRef: verification.evidenceRef } : {}),
-        evidenceState: "OBSERVED",
-        message: "Action result independently verified."
-      };
-    } catch (error) {
-      // Do not persist raw exception messages; provider errors can contain sensitive details.
-      await this.write(request, "FAILED", {
-        reason: error instanceof Error ? error.name : "Unknown execution error."
-      });
-      throw error;
-    }
+    return {
+      accepted: false,
+      operationId: request.requestId,
+      message: "Sandbox dry-run only; no adapter was executed and no real-world action was performed.",
+      evidenceState: "SIMULATED"
+    };
   }
 
   private async write(
