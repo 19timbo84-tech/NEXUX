@@ -26,6 +26,7 @@ function policy(overrides: Partial<ConstructorParameters<typeof FailClosedPolicy
   return new FailClosedPolicy({
     approvalRequiredAt: "SENSITIVE",
     enabledCapabilities: new Set(["demo-light"]),
+    resolveAuthenticatedActorId: vi.fn().mockResolvedValue("user-1"),
     resolveGrantedScopes: vi.fn().mockResolvedValue(new Set(["light:control"])),
     validateApprovalToken: vi.fn().mockResolvedValue(true),
     isEmergencyStopActive: vi.fn().mockResolvedValue(false),
@@ -34,8 +35,28 @@ function policy(overrides: Partial<ConstructorParameters<typeof FailClosedPolicy
 }
 
 describe("FailClosedPolicy", () => {
-  it("allows an enabled, declared action with server-granted scope", async () => {
+  it("allows an enabled, declared action only when trusted identity and scope match", async () => {
     await expect(policy().authorize(request, manifest)).resolves.toMatchObject({ allowed: true });
+  });
+
+  it("denies a spoofed actor that differs from the trusted principal", async () => {
+    const resolveGrantedScopes = vi.fn().mockResolvedValue(new Set(["light:control"]));
+    const resolver = vi.fn().mockResolvedValue("user-1");
+    const result = await policy({
+      resolveAuthenticatedActorId: resolver,
+      resolveGrantedScopes
+    }).authorize({ ...request, actorId: "admin-2" }, manifest);
+    expect(result).toMatchObject({ allowed: false, reason: expect.stringContaining("trusted authenticated principal") });
+    expect(resolveGrantedScopes).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when trusted authentication context is missing or throws", async () => {
+    await expect(policy({
+      resolveAuthenticatedActorId: vi.fn().mockResolvedValue(null)
+    }).authorize(request, manifest)).resolves.toMatchObject({ allowed: false });
+    await expect(policy({
+      resolveAuthenticatedActorId: vi.fn().mockRejectedValue(new Error("auth unavailable"))
+    }).authorize(request, manifest)).resolves.toMatchObject({ allowed: false });
   });
 
   it("denies when the emergency stop is active", async () => {
@@ -66,8 +87,8 @@ describe("FailClosedPolicy", () => {
       .resolves.toMatchObject({ allowed: false });
   });
 
-  it("does not accept client-provided scopes as authorization", async () => {
-    const resolveGrantedScopes = vi.fn().mockResolvedValue(new Set<string>());
+  it("resolves permissions only for the trusted authenticated principal", async () => {
+    const resolveGrantedScopes = vi.fn().mockResolvedValue(new Set(["light:control"]));
     await policy({ resolveGrantedScopes }).authorize(request, manifest);
     expect(resolveGrantedScopes).toHaveBeenCalledWith("user-1");
   });
