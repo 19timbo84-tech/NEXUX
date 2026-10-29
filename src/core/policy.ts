@@ -10,6 +10,11 @@ export interface PolicyConfig {
   approvalRequiredAt: RiskLevel;
   /** Server-controlled allowlist; never derive this from the model or request. */
   enabledCapabilities: ReadonlySet<string>;
+  /**
+   * Resolve the actor from trusted server authentication context (verified session/token).
+   * Never implement this by returning request.actorId without authenticating it.
+   */
+  resolveAuthenticatedActorId: (request: ActionRequest) => Promise<string | null>;
   /** Resolve scopes from trusted server-side identity/authorization storage. */
   resolveGrantedScopes: (authenticatedActorId: string) => Promise<ReadonlySet<string>>;
   /** Must validate actor, action, target, expiry, single-use and request binding. */
@@ -35,6 +40,17 @@ export class FailClosedPolicy implements AuthorizationPolicy {
     if (!request.actorId.trim() || !request.requestId.trim()) {
       return { allowed: false, reason: "Missing authenticated actor or request identity." };
     }
+
+    let authenticatedActorId: string | null;
+    try {
+      authenticatedActorId = await this.config.resolveAuthenticatedActorId(request);
+    } catch {
+      return { allowed: false, reason: "Trusted authentication context could not be resolved; refusing by default." };
+    }
+    if (!authenticatedActorId || !authenticatedActorId.trim() || authenticatedActorId !== request.actorId) {
+      return { allowed: false, reason: "Request actor does not match the trusted authenticated principal." };
+    }
+
     if (request.capabilityId !== manifest.id) {
       return { allowed: false, reason: "Request capability does not match the registered manifest." };
     }
@@ -68,7 +84,7 @@ export class FailClosedPolicy implements AuthorizationPolicy {
 
     let grantedScopes: ReadonlySet<string>;
     try {
-      grantedScopes = await this.config.resolveGrantedScopes(request.actorId);
+      grantedScopes = await this.config.resolveGrantedScopes(authenticatedActorId);
     } catch {
       return { allowed: false, reason: "Unable to resolve trusted permissions; refusing by default." };
     }
@@ -89,6 +105,6 @@ export class FailClosedPolicy implements AuthorizationPolicy {
         return { allowed: false, reason: "Approval validation failed; refusing by default." };
       }
     }
-    return { allowed: true, reason: "Server-side authorization checks passed." };
+    return { allowed: true, reason: "Trusted identity and server-side authorization checks passed." };
   }
 }
