@@ -1,0 +1,27 @@
+name: MB-009 Ultra Emergence Tests
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/mb009-ultra-capability-emergence"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ultra-emergence:
+    name: Validate MB-009 evaluator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run deterministic evaluator tests
+        run: npm run test:ultra-emergence
